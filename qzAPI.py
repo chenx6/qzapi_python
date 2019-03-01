@@ -18,7 +18,6 @@ class qzapi:
     httpHead = 'http://'
     host = 'jwgl.sdust.edu.cn'
 
-
     def __init__(self, idNumber, password):
         '''
         初始化
@@ -26,22 +25,21 @@ class qzapi:
         :param idNumber: 学号
         :param password：账号密码
         '''
+        self.loginUrl = '/app.do?method=authUser&xh={idNumber}&pwd={password}'
+        self.dateUrl = '/app.do?method=getCurrentTime&currDate={currDate}'
+        self.scheduleUrl = '/app.do?method=getKbcxAzc&xh={idNumber}&xnxqid={semester}&zc={week}'
+        self.emptyRoomUrl = '/app.do?method=getKxJscx&time={currTime}&idleTime={idle}'
+        self.userInfoUrl = '/app.do?method=getUserInfo&xh={idNumber}'
+        self.examUrl = '/app.do?method=getCjcx&xh={idNumber}&xnxqid={semester}'
+        self.currDate += time.strftime('%Y-%m-%d', time.localtime())
         try:
-            if idNumber == '' or password == '':
+            if idNumber is '' or password is '':
                 raise ValueError('未输入参数', idNumber, password)
             self.idNumber = idNumber
-            self.loginUrl = '/app.do?method=authUser&xh={idNumber}&pwd={password}'
-            self.dateUrl = '/app.do?method=getCurrentTime&currDate={currDate}'
-            self.scheduleUrl = '/app.do?method=getKbcxAzc&xh={idNumber}&xnxqid={semester}&zc={week}'
-            self.emptyRoomUrl = '/app.do?method=getKxJscx&time={currTime}&idleTime={idle}'
-            self.userInfoUrl = '/app.do?method=getUserInfo&xh={idNumber}'
-            self.examUrl = '/app.do?method=getCjcx&xh={idNumber}&xnxqid={semester}'
-            self.idNumber = idNumber
-            self.currDate += time.strftime('%Y-%m-%d', time.localtime())
-            self.loginUrl = self.loginUrl.format(
+            loginUrl = self.loginUrl.format(
                 idNumber=self.idNumber, password=password)
             loginResp = self.session.post(
-                self.httpHead + self.host + self.loginUrl)
+                self.httpHead + self.host + loginUrl)
             loginJson = loginResp.json()
             if loginJson['token'] == -1:
                 raise ValueError('账号或密码输入错误')
@@ -63,12 +61,16 @@ class qzapi:
             'major': 专业名称, 'class': 班级}
         '''
         try:
-            self.userInfoUrl = self.userInfoUrl.format(idNumber=self.idNumber)
+            userInfoUrl = self.userInfoUrl.format(idNumber=self.idNumber)
             userInfoResp = self.session.post(
-                self.httpHead+self.host+self.userInfoUrl)
+                self.httpHead+self.host+userInfoUrl)
             userInfoJson = userInfoResp.json()
+            if None in userInfoJson or len(userInfoJson) is 0:
+                raise ValueError('无法获取资料')
         except requests.exceptions.ConnectionError as e:
             print('网络有问题:', e)
+        except ValueError as e:
+            print('参数错误', e)
         else:
             sortedUserInfo = self.sort_user_info(userInfoJson)
             return sortedUserInfo
@@ -79,10 +81,10 @@ class qzapi:
         该函数没有return值, 只是将当前周次和当前学期存入类中
         '''
         try:
-            self.dateUrl = self.dateUrl.format(currDate=self.currDate)
-            dateResp = self.session.post(self.httpHead+self.host+self.dateUrl)
+            dateUrl = self.dateUrl.format(currDate=self.currDate)
+            dateResp = self.session.post(self.httpHead+self.host+dateUrl)
             dateJson = dateResp.json()
-            if dateJson == '':
+            if None in dateJson or len(dateJson) is 0:
                 raise ValueError('无法获取时间')
         except requests.exceptions.ConnectionError as e:
             print('网络有问题:', e)
@@ -93,7 +95,7 @@ class qzapi:
             self.week = dateJson['zc']
             self.currSemester = dateJson['xnxqh']
 
-    def get_schedule(self, queryWeek):
+    def get_schedule(self, queryWeek=None):
         '''
         获取课程表
 
@@ -104,21 +106,25 @@ class qzapi:
             'subjectName': 课程名字, 'teacherName': 教师名字, \
             'roomName': 教室名字, 'teachWeek': 教学周次}
         '''
+        if queryWeek is None:
+            queryWeek = self.week
         try:
-            if queryWeek == 0:
-                queryWeek = self.week
-            self.scheduleUrl = self.scheduleUrl.format(
+            scheduleUrl = self.scheduleUrl.format(
                 idNumber=self.idNumber, semester=self.currSemester, week=str(queryWeek))
             scheduleResp = self.session.post(
-                self.httpHead + self.host + self.scheduleUrl)
+                self.httpHead + self.host + scheduleUrl)
             scheduleJson = scheduleResp.json()
+            if None in scheduleJson or len(scheduleJson) is 0:
+                raise ValueError('无法获取课程表')
         except requests.exceptions.ConnectionError as e:
-            print('网络有问题:', e) 
+            print('网络有问题:', e)
+        except ValueError as e:
+            print('参数错误', e)
         else:
             sortedSchedule = self.sort_schedule(scheduleJson)
             return sortedSchedule
 
-    def get_empty_classroom(self, idleTime, currDate):
+    def get_empty_classroom(self, idleTime, currDate=None):
         '''
         获取今日的空教室
 
@@ -128,25 +134,25 @@ class qzapi:
         :return: 
         {'floorName': 教学楼名字, 'roomList': 空教室名单[{'roomName': 空教室名字, 'roomSize': 空教室大小, 'floorName': 教学楼名字}]}
         '''
+        if currDate is None:
+            currDate = self.currDate
         try:
-            if currDate == 0:
-                currDate = self.currDate
-            self.emptyRoomUrl = self.emptyRoomUrl.format(
+            emptyRoomUrl = self.emptyRoomUrl.format(
                 currTime=currDate, idle=idleTime)
             emptyClassResp = self.session.post(
-                self.httpHead+self.host+self.emptyRoomUrl)
+                self.httpHead+self.host+emptyRoomUrl)
             emptyClassJson = emptyClassResp.json()
-            if emptyClassJson == '':
+            if None in emptyClassJson or len(emptyClassJson) is 0:
                 raise ValueError('无空闲教室')
         except requests.exceptions.ConnectionError as e:
             print('网络有问题:', e)
         except ValueError as e:
-            print('无返回值', e)
+            print('参数错误', e)
         else:
             sortedEmptyClassroom = self.sort_empty_classroom(emptyClassJson)
             return sortedEmptyClassroom
 
-    def get_exam_score(self, semester):
+    def get_exam_score(self, semester=None):
         '''
         获取令人悲伤的成绩
 
@@ -159,19 +165,19 @@ class qzapi:
             'subjectEngName': 课程英语名, 'subjectName': 课程名字, \
             'score': 分数, 'credit': 学分}
         '''
+        if semester is None:
+            semester = self.currSemester
         try:
-            if semester == 0:
-                semester = self.currSemester
-            self.examUrl = self.examUrl.format(
+            examUrl = self.examUrl.format(
                 idNumber=self.idNumber, semester=semester)
-            examResp = self.session.post(self.httpHead+self.host+self.examUrl)
+            examResp = self.session.post(self.httpHead+self.host+examUrl)
             examJson = examResp.json()
-            if examJson == '':
+            if None in examJson or len(examJson) is 0:
                 raise ValueError('无成绩')
         except requests.exceptions.ConnectionError as e:
-            print('网络有问题:', e) 
+            print('网络有问题:', e)
         except ValueError as e:
-            print('无返回值')
+            print('参数错误')
         else:
             sortedExam = self.sort_exam(examJson)
             return sortedExam
