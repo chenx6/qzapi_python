@@ -9,14 +9,13 @@ import time
 
 
 class qzapi:
+    '''
+    将强智教务系统的API封装成类，以方便调用
+    '''
+
     session = requests.Session()
-
-    currDate = ''
-    week = 0
-    currSemester = ''
-
-    httpHead = 'http://'
     host = 'jwgl.sdust.edu.cn'
+    api = f'http://{host}/app.do'
 
     def __init__(self, idNumber, password):
         '''
@@ -25,21 +24,21 @@ class qzapi:
         :param idNumber: 学号
         :param password：账号密码
         '''
-        self.loginUrl = '/app.do?method=authUser&xh={idNumber}&pwd={password}'
-        self.dateUrl = '/app.do?method=getCurrentTime&currDate={currDate}'
-        self.scheduleUrl = '/app.do?method=getKbcxAzc&xh={idNumber}&xnxqid={semester}&zc={week}'
-        self.emptyRoomUrl = '/app.do?method=getKxJscx&time={currTime}&idleTime={idle}'
-        self.userInfoUrl = '/app.do?method=getUserInfo&xh={idNumber}'
-        self.examUrl = '/app.do?method=getCjcx&xh={idNumber}&xnxqid={semester}'
-        self.currDate += time.strftime('%Y-%m-%d', time.localtime())
+        self.loginParam = {'method': 'authUser'}
+        self.dateParam = {'method': 'getCurrentTime'}
+        self.scheduleParam = {'method': 'getKbcxAzc'}
+        self.emptyRoomParam = {'method': 'getKxJscx'}
+        self.userInfoParam = {'method': 'getUserInfo'}
+        self.examParam = {'method': 'getCjcx'}
+        self.currDate = time.strftime('%Y-%m-%d', time.localtime())
         try:
             if idNumber is '' or password is '':
                 raise ValueError('未输入参数', idNumber, password)
             self.idNumber = idNumber
-            loginUrl = self.loginUrl.format(
-                idNumber=self.idNumber, password=password)
+            self.loginParam['xh'] = idNumber
+            self.loginParam['pwd'] = password
             loginResp = self.session.post(
-                self.httpHead + self.host + loginUrl)
+                self.api, params=self.loginParam)
             loginJson = loginResp.json()
             if loginJson['token'] == -1:
                 raise ValueError('账号或密码输入错误')
@@ -61,9 +60,9 @@ class qzapi:
             'major': 专业名称, 'class': 班级}
         '''
         try:
-            userInfoUrl = self.userInfoUrl.format(idNumber=self.idNumber)
+            self.userInfoParam['xh'] = self.idNumber
             userInfoResp = self.session.post(
-                self.httpHead+self.host+userInfoUrl)
+                self.api, params=self.userInfoParam)
             userInfoJson = userInfoResp.json()
             if None in userInfoJson or len(userInfoJson) is 0:
                 raise ValueError('无法获取资料')
@@ -81,8 +80,8 @@ class qzapi:
         该函数没有return值, 只是将当前周次和当前学期存入类中
         '''
         try:
-            dateUrl = self.dateUrl.format(currDate=self.currDate)
-            dateResp = self.session.post(self.httpHead+self.host+dateUrl)
+            self.dateParam['currDate'] = self.currDate
+            dateResp = self.session.post(self.api, params=self.dateParam)
             dateJson = dateResp.json()
             if None in dateJson or len(dateJson) is 0:
                 raise ValueError('无法获取时间')
@@ -99,7 +98,7 @@ class qzapi:
         '''
         获取课程表
 
-        :param week: 当前周次
+        :param queryWeek: 当前周次
 
         :return: 一个dict:
         {'weekday': 星期,'daySequence': 课程次序, \
@@ -109,10 +108,11 @@ class qzapi:
         if queryWeek is None:
             queryWeek = self.week
         try:
-            scheduleUrl = self.scheduleUrl.format(
-                idNumber=self.idNumber, semester=self.currSemester, week=str(queryWeek))
+            self.scheduleParam['xh'] = self.idNumber
+            self.scheduleParam['xnxqid'] = self.currSemester
+            self.scheduleParam['zc'] = str(queryWeek)
             scheduleResp = self.session.post(
-                self.httpHead + self.host + scheduleUrl)
+                self.api, params=self.scheduleParam)
             scheduleJson = scheduleResp.json()
             if None in scheduleJson or len(scheduleJson) is 0:
                 raise ValueError('无法获取课程表')
@@ -137,10 +137,10 @@ class qzapi:
         if currDate is None:
             currDate = self.currDate
         try:
-            emptyRoomUrl = self.emptyRoomUrl.format(
-                currTime=currDate, idle=idleTime)
+            self.emptyRoomParam['time'] = currDate
+            self.emptyRoomParam['idleTime'] = idleTime
             emptyClassResp = self.session.post(
-                self.httpHead+self.host+emptyRoomUrl)
+                self.api, params=self.emptyRoomParam)
             emptyClassJson = emptyClassResp.json()
             if None in emptyClassJson or len(emptyClassJson) is 0:
                 raise ValueError('无空闲教室')
@@ -168,9 +168,9 @@ class qzapi:
         if semester is None:
             semester = self.currSemester
         try:
-            examUrl = self.examUrl.format(
-                idNumber=self.idNumber, semester=semester)
-            examResp = self.session.post(self.httpHead+self.host+examUrl)
+            self.examParam['xh'] = self.idNumber
+            self.examParam['xnxqid'] = semester
+            examResp = self.session.post(self.api, params=self.examParam)
             examJson = examResp.json()
             if None in examJson or len(examJson) is 0:
                 raise ValueError('无成绩')
