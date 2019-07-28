@@ -14,6 +14,7 @@ class qzapi:
     '''
 
     session = requests.Session()
+    session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
     host = 'jwgl.sdust.edu.cn'
     api = f'http://{host}/app.do'
 
@@ -31,25 +32,20 @@ class qzapi:
         self.userInfoParam = {'method': 'getUserInfo'}
         self.examParam = {'method': 'getCjcx'}
         self.currDate = time.strftime('%Y-%m-%d', time.localtime())
-        try:
-            if idNumber is '' or password is '':
-                raise ValueError('未输入参数', idNumber, password)
-            self.idNumber = idNumber
-            self.loginParam['xh'] = idNumber
-            self.loginParam['pwd'] = password
-            loginResp = self.session.post(
-                self.api, params=self.loginParam)
-            loginJson = loginResp.json()
-            if loginJson['token'] == -1:
-                raise ValueError('账号或密码输入错误')
-        except requests.exceptions.ConnectionError as e:
-            print('网络有问题', e)
-        except ValueError as e:
-            print('参数错误', e)
-        else:
-            header = {'token': loginJson['token']}
-            self.session.headers.update(header)
-            self.get_curr_time()
+
+        if idNumber == '' or password == '':
+            raise ValueError('未输入参数', idNumber, password)
+        self.idNumber = idNumber
+        self.loginParam['xh'] = idNumber
+        self.loginParam['pwd'] = password
+        loginResp = self.session.post(
+            self.api, params=self.loginParam)
+        loginJson = loginResp.json()
+        if loginJson['token'] == -1:
+            raise ValueError('账号或密码输入错误')
+        header = {'token': loginJson['token']}
+        self.session.headers.update(header)
+        self.get_curr_time()
 
     def get_user_info(self):
         '''
@@ -59,40 +55,28 @@ class qzapi:
         {'name': 学生姓名, 'sex': 性别, 'grade': 年级, 'college': 院校名称, \
             'major': 专业名称, 'class': 班级}
         '''
-        try:
-            self.userInfoParam['xh'] = self.idNumber
-            userInfoResp = self.session.post(
-                self.api, params=self.userInfoParam)
-            userInfoJson = userInfoResp.json()
-            if None in userInfoJson or len(userInfoJson) is 0:
-                raise ValueError('无法获取资料')
-        except requests.exceptions.ConnectionError as e:
-            print('网络有问题:', e)
-        except ValueError as e:
-            print('参数错误', e)
-        else:
-            sortedUserInfo = self.sort_user_info(userInfoJson)
-            return sortedUserInfo
+        self.userInfoParam['xh'] = self.idNumber
+        userInfoResp = self.session.post(
+            self.api, params=self.userInfoParam)
+        userInfoJson = userInfoResp.json()
+        if None in userInfoJson or len(userInfoJson) == 0:
+            raise ValueError('无法获取资料')
+        sortedUserInfo = self.sort_user_info(userInfoJson)
+        return sortedUserInfo
 
     def get_curr_time(self):
         '''
         获取当前周次和学期
         该函数没有return值, 只是将当前周次和当前学期存入类中
         '''
-        try:
-            self.dateParam['currDate'] = self.currDate
-            dateResp = self.session.post(self.api, params=self.dateParam)
-            dateJson = dateResp.json()
-            if None in dateJson or len(dateJson) is 0:
-                raise ValueError('无法获取时间')
-        except requests.exceptions.ConnectionError as e:
-            print('网络有问题:', e)
-        except ValueError as e:
-            print('参数错误', e)
-        else:
-            # week is a number...
-            self.week = dateJson['zc']
-            self.currSemester = dateJson['xnxqh']
+        self.dateParam['currDate'] = self.currDate
+        dateResp = self.session.post(self.api, params=self.dateParam)
+        dateJson = dateResp.json()
+        if None in dateJson or len(dateJson) == 0:
+            raise ValueError('无法获取时间')
+        # week is a number...
+        self.week = dateJson['zc']
+        self.currSemester = dateJson['xnxqh']
 
     def get_schedule(self, queryWeek=None):
         '''
@@ -105,24 +89,18 @@ class qzapi:
             'subjectName': 课程名字, 'teacherName': 教师名字, \
             'roomName': 教室名字, 'teachWeek': 教学周次}
         '''
-        if queryWeek is None:
+        if queryWeek == None:
             queryWeek = self.week
-        try:
-            self.scheduleParam['xh'] = self.idNumber
-            self.scheduleParam['xnxqid'] = self.currSemester
-            self.scheduleParam['zc'] = str(queryWeek)
-            scheduleResp = self.session.post(
-                self.api, params=self.scheduleParam)
-            scheduleJson = scheduleResp.json()
-            if None in scheduleJson or len(scheduleJson) is 0:
-                raise ValueError('无法获取课程表')
-        except requests.exceptions.ConnectionError as e:
-            print('网络有问题:', e)
-        except ValueError as e:
-            print('参数错误', e)
-        else:
-            sortedSchedule = self.sort_schedule(scheduleJson)
-            return sortedSchedule
+        self.scheduleParam['xh'] = self.idNumber
+        self.scheduleParam['xnxqid'] = self.currSemester
+        self.scheduleParam['zc'] = str(queryWeek)
+        scheduleResp = self.session.post(
+            self.api, params=self.scheduleParam)
+        scheduleJson = scheduleResp.json()
+        if None in scheduleJson or len(scheduleJson) == 0:
+            raise ValueError('无法获取课程表')
+        sortedSchedule = self.sort_schedule(scheduleJson)
+        return sortedSchedule
 
     def get_empty_classroom(self, idleTime, currDate=None):
         '''
@@ -134,23 +112,17 @@ class qzapi:
         :return: 
         {'floorName': 教学楼名字, 'roomList': 空教室名单[{'roomName': 空教室名字, 'roomSize': 空教室大小, 'floorName': 教学楼名字}]}
         '''
-        if currDate is None:
+        if currDate == None:
             currDate = self.currDate
-        try:
-            self.emptyRoomParam['time'] = currDate
-            self.emptyRoomParam['idleTime'] = idleTime
-            emptyClassResp = self.session.post(
-                self.api, params=self.emptyRoomParam)
-            emptyClassJson = emptyClassResp.json()
-            if None in emptyClassJson or len(emptyClassJson) is 0:
-                raise ValueError('无空闲教室')
-        except requests.exceptions.ConnectionError as e:
-            print('网络有问题:', e)
-        except ValueError as e:
-            print('参数错误', e)
-        else:
-            sortedEmptyClassroom = self.sort_empty_classroom(emptyClassJson)
-            return sortedEmptyClassroom
+        self.emptyRoomParam['time'] = currDate
+        self.emptyRoomParam['idleTime'] = idleTime
+        emptyClassResp = self.session.post(
+            self.api, params=self.emptyRoomParam)
+        emptyClassJson = emptyClassResp.json()
+        if None in emptyClassJson or len(emptyClassJson) == 0:
+            raise ValueError('无空闲教室')
+        sortedEmptyClassroom = self.sort_empty_classroom(emptyClassJson)
+        return sortedEmptyClassroom
 
     def get_exam_score(self, semester=None):
         '''
@@ -165,22 +137,16 @@ class qzapi:
             'subjectEngName': 课程英语名, 'subjectName': 课程名字, \
             'score': 分数, 'credit': 学分}
         '''
-        if semester is None:
+        if semester == None:
             semester = self.currSemester
-        try:
-            self.examParam['xh'] = self.idNumber
-            self.examParam['xnxqid'] = semester
-            examResp = self.session.post(self.api, params=self.examParam)
-            examJson = examResp.json()
-            if None in examJson or len(examJson) is 0:
-                raise ValueError('无成绩')
-        except requests.exceptions.ConnectionError as e:
-            print('网络有问题:', e)
-        except ValueError as e:
-            print('参数错误')
-        else:
-            sortedExam = self.sort_exam(examJson)
-            return sortedExam
+        self.examParam['xh'] = self.idNumber
+        self.examParam['xnxqid'] = semester
+        examResp = self.session.post(self.api, params=self.examParam)
+        examJson = examResp.json()
+        if None in examJson or len(examJson) == 0:
+            raise ValueError('无成绩')
+        sortedExam = self.sort_exam(examJson)
+        return sortedExam
 
     def sort_user_info(self, userInfoJson):
         '''
