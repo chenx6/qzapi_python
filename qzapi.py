@@ -121,6 +121,8 @@ class qzapi:
         emptyClassJson = emptyClassResp.json()
         if None in emptyClassJson or len(emptyClassJson) == 0:
             raise ValueError('无空闲教室')
+        elif type(emptyClassJson) == type({}) and emptyClassJson['msg'] == '请联系管理员生成教学周历':
+            raise ValueError('管理员未生成教学周历')
         sortedEmptyClassroom = self.sort_empty_classroom(emptyClassJson)
         return sortedEmptyClassroom
 
