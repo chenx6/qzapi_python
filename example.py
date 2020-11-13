@@ -18,7 +18,7 @@ def menu(qz):
                 print(formatSch)
         elif choice == '3':
             period = input('输入时间段("am","pm","night","allday"):')
-            room = qz.get_empty_classroom('am')
+            room = qz.get_empty_classroom(period)
             for i in room:
                 print(f'{i["floorName"]}:')
                 for j in i['roomList']:
