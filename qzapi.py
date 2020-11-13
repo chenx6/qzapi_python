@@ -8,6 +8,10 @@ import requests
 import time
 
 
+class QzapiExecption(Exception):
+    pass
+
+
 class qzapi:
     '''
     将强智教务系统的API封装成类，以方便调用
@@ -34,7 +38,7 @@ class qzapi:
         self.currDate = time.strftime('%Y-%m-%d', time.localtime())
 
         if idNumber == '' or password == '':
-            raise ValueError('未输入参数', idNumber, password)
+            raise QzapiExecption('未输入参数', idNumber, password)
         self.idNumber = idNumber
         self.loginParam['xh'] = idNumber
         self.loginParam['pwd'] = password
@@ -42,7 +46,7 @@ class qzapi:
             self.api, params=self.loginParam)
         loginJson = loginResp.json()
         if loginJson['token'] == -1:
-            raise ValueError('账号或密码输入错误')
+            raise QzapiExecption('账号或密码输入错误')
         header = {'token': loginJson['token']}
         self.session.headers.update(header)
         self.get_curr_time()
@@ -60,7 +64,7 @@ class qzapi:
             self.api, params=self.userInfoParam)
         userInfoJson = userInfoResp.json()
         if None in userInfoJson or len(userInfoJson) == 0:
-            raise ValueError('无法获取资料')
+            raise QzapiExecption('无法获取资料')
         sortedUserInfo = self.sort_user_info(userInfoJson)
         return sortedUserInfo
 
@@ -73,7 +77,7 @@ class qzapi:
         dateResp = self.session.post(self.api, params=self.dateParam)
         dateJson = dateResp.json()
         if None in dateJson or len(dateJson) == 0:
-            raise ValueError('无法获取时间')
+            raise QzapiExecption('无法获取时间')
         # week is a number...
         self.week = dateJson['zc']
         self.currSemester = dateJson['xnxqh']
@@ -98,7 +102,7 @@ class qzapi:
             self.api, params=self.scheduleParam)
         scheduleJson = scheduleResp.json()
         if None in scheduleJson or len(scheduleJson) == 0:
-            raise ValueError('无法获取课程表')
+            raise QzapiExecption('无法获取课程表')
         sortedSchedule = self.sort_schedule(scheduleJson)
         return sortedSchedule
 
@@ -120,9 +124,9 @@ class qzapi:
             self.api, params=self.emptyRoomParam)
         emptyClassJson = emptyClassResp.json()
         if None in emptyClassJson or len(emptyClassJson) == 0:
-            raise ValueError('无空闲教室')
+            raise QzapiExecption('无空闲教室')
         elif type(emptyClassJson) == type({}) and emptyClassJson['msg'] == '请联系管理员生成教学周历':
-            raise ValueError('管理员未生成教学周历')
+            raise QzapiExecption('管理员未生成教学周历')
         sortedEmptyClassroom = self.sort_empty_classroom(emptyClassJson)
         return sortedEmptyClassroom
 
@@ -146,7 +150,7 @@ class qzapi:
         examResp = self.session.post(self.api, params=self.examParam)
         examJson = examResp.json()
         if None in examJson or len(examJson) == 0:
-            raise ValueError('无成绩')
+            raise QzapiExecption('无成绩')
         sortedExam = self.sort_exam(examJson)
         return sortedExam
 
