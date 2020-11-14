@@ -67,6 +67,17 @@ class Qzapi:
             raise QzapiExecption('无法获取资料')
         sortedUserInfo = self.sort_user_info(userInfoJson)
         return sortedUserInfo
+    
+    @staticmethod
+    def gene_semester():
+        year = int(time.strftime('%Y', time.localtime()))
+        month = int(time.strftime('%m', time.localtime()))
+        sem = '{}-{}-{}'
+        # 用月份来决定学期
+        if month >= 8 or month <= 2:
+            sem = sem.format(year, year+1, 1)
+        else:
+            sem = sem.format(year-1, year, 2)
 
     def get_curr_time(self):
         '''
@@ -76,11 +87,14 @@ class Qzapi:
         self.dateParam['currDate'] = self.currDate
         dateResp = self.session.post(self.api, params=self.dateParam)
         dateJson = dateResp.json()
-        if None in dateJson or len(dateJson) == 0:
-            raise QzapiExecption('无法获取时间')
-        # week is a number...
-        self.week = dateJson['zc']
-        self.currSemester = dateJson['xnxqh']
+        if None in dateJson.values() or len(dateJson) == 0:
+            print('[Warning] can\' get current week by api')
+            self.week = 1
+            self.currSemester = Qzapi.gene_semester()
+        else:
+            # week is a number...
+            self.week = dateJson['zc']
+            self.currSemester = dateJson['xnxqh']
 
     def get_schedule(self, queryWeek=None):
         '''

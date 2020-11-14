@@ -11,7 +11,11 @@ def menu(qz):
             formatInfo += f'{info["college"]}, {info["major"]}, {info["class"]}'
             print(formatInfo)
         elif choice == '2':
-            sch = qz.get_schedule()
+            input_week = input('输入查询周次(例:9):')
+            if len(input_week) != 0:
+                sch = qz.get_schedule(int(input_week))
+            else:
+                sch = qz.get_schedule()
             for i in sch:
                 formatSch = f'{i["weekday"]}, {i["daySequence"]}, {i["subjectName"]}, '
                 formatSch += f'{i["roomName"]}, {i["teacherName"]}, {i["teachWeek"]}'
