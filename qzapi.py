@@ -12,7 +12,7 @@ class QzapiExecption(Exception):
     pass
 
 
-class qzapi:
+class Qzapi:
     '''
     将强智教务系统的API封装成类，以方便调用
     '''

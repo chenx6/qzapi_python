@@ -37,5 +37,5 @@ if __name__ == '__main__':
     idNumber = input('输入账号:')
     password = getpass('输入密码:')
 
-    qz = qzapi.qzapi(idNumber, password)
+    qz = qzapi.Qzapi(idNumber, password)
     menu(qz)
